@@ -1035,16 +1035,13 @@ class OneOf(Rule):
         shortest = s            # look for shortest remainder
         result = None
         for grammar in self.what:
-            #print(grammar)
             (t, a, r) = grammar.parse(s)
             if t != False:
                 if len(r) < len(shortest):
                     shortest = r
                     result = (t, a, r)
-        print("FFFF____XXX")
         if result == None:
             return parseError([("OneOf: no match", s)], s)
-        print("AFTER OneOf")
         return result
 
 class Tuple(Rule):
