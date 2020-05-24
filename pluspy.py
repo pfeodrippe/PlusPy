@@ -140,8 +140,6 @@ class Nonce:
 ####    Module specification
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
-ddd = 0
-
 class Module:
     def __init__(self):
         self.name = None
@@ -374,15 +372,14 @@ class Module:
     def load_from_string(self, source, srcid):
         # First run source through lexical analysis
         r = lexer(source, srcid)
-        if True:
+        if verbose:
             print()
             print("---------------")
             print("Output from Lexer")
             print("---------------")
             print(r)
-            ddd = r
 
-        # Parse the output from the lexer into an AST
+            # Parse the output from the lexer into an AST
         gmod = GModule()
 
         # Error handling
@@ -439,7 +436,6 @@ class Module:
         content = await maybe_fetch_text(await read_file(full))
         print(content)
         return self.load_from_string(content, file)
-        #self.load(f, file)
 
 def load_module(name):
     mod = name_lookup(name)
@@ -1899,6 +1895,8 @@ def compileExpression(ast):
     elif t == "Cartesian":
         return CartesianExpression().fromAST(a)
     elif t == "choose":
+        print("choose")
+        print(a)
         return ChooseExpression().fromAST(a)
     elif t == "if":
         return IfExpression().fromAST(a)
@@ -2992,6 +2990,9 @@ class ChooseExpression(Expression):
         assert False
 
     def apply(self, containers, boundedvars, fargs):
+        print(containers)
+        print(boundedvars)
+        print(fargs)
         newBV = boundedvars.copy()
         if self.domain == None \
                 and isinstance(self.expr, InfixExpression) \
