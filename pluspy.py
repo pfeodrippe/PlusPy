@@ -1,14 +1,17 @@
 # Author: Robbert van Renesse, 2020
 
-import os
+#import os
 import random
-import traceback
+__pragma__ ('skip')
+import asyncio
+__pragma__ ('noskip')
+#import traceback
 
 pluspypath = ".:./modules/lib:./modules/book:./modules/other"
 
 def exit(status):
     sys.stdout.flush()
-    os._exit(status)
+    #os._exit(status)
 
 # When compiling and running into an identifier, it should be clear
 # exactly what that identifier refers to.  It could be the name of:
@@ -38,13 +41,24 @@ def name_find(name):
         print("Identifier", name, "not found")
     return e
 
+async def maybe_fetch_text(res):
+    if res.status is 200:
+        return res.text().then(lambda t: t)
+    return False
+
+async def read_file(path):
+    return await fetch(path)
+
 # Find a file using a directory path
-def file_find(name, path):
+async def file_find(name, path):
     sep = ";" if path.find(";") >= 0 else ":"
     for dir in path.split(sep):
-        full = os.path.join(dir, name)
-        if os.path.exists(full):
-            return os.path.abspath(full)
+        full = dir + "/" + name
+        response = await read_file(full)
+        print(response.status)
+        if response.status is 200:
+            print(full)
+            return full
     return False
 
 # For debugging, we give each bounded variable a unique identifier
@@ -122,9 +136,11 @@ class Nonce:
     def __eq__(self, other):
         return isinstance(other, Nonce) and other.id == self.id
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Module specification
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
+
+ddd = 0
 
 class Module:
     def __init__(self):
@@ -305,6 +321,7 @@ class Module:
     def extends(self, ast):
         for (n, m) in ast:
             assert n == "Name"
+            print(lexeme(m))
             mod = load_module(lexeme(m))
             assert mod.constants == dict()
             assert mod.variables == dict()
@@ -357,12 +374,13 @@ class Module:
     def load_from_string(self, source, srcid):
         # First run source through lexical analysis
         r = lexer(source, srcid)
-        if verbose:
+        if True:
             print()
             print("---------------")
             print("Output from Lexer")
             print("---------------")
             print(r)
+            ddd = r
 
         # Parse the output from the lexer into an AST
         gmod = GModule()
@@ -372,6 +390,9 @@ class Module:
         shortest = r
 
         (t, a, r) = gmod.parse(r)
+        print(t)
+        print(a)
+        print(r)
         # t is the type of the AST root node (False if error)
         # a is the content (or error message list if error)
         # r is the suffix of the lexer output that could not be parsed
@@ -411,12 +432,14 @@ class Module:
            all += line
         return self.load_from_string(all, srcid)
 
-    def load_from_file(self, file):
-        full = file_find(file, pluspypath)
+    async def load_from_file(self, file):
+        full = await file_find(file, pluspypath)
         if not full:
             return False
-        with open(full) as f:
-            return self.load(f, file)
+        content = await maybe_fetch_text(await read_file(full))
+        print(content)
+        return self.load_from_string(content, file)
+        #self.load(f, file)
 
 def load_module(name):
     mod = name_lookup(name)
@@ -433,9 +456,9 @@ def load_module(name):
             mod = modules[name]
     return mod
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Module instance
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 # Describes an "INSTANCE module-name WITH k <- e ..." expression.
 # Here each k is either a constant or variable name of the module, and e
@@ -519,9 +542,9 @@ class ModInst:
             if self.module.wrappers.get(k) != None:
                 self.wrappers[k] = self.module.wrappers[k]
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Compiler: convenient routines
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 def islower(c):
     return c in "abcdefghijklmnopqrstuvwxyz"
@@ -545,9 +568,9 @@ def isprint(c):
     return isinstance(c, str) and len(c) == 1 and (
         isalnum(c) or c in " ~`!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?")
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Compiler: various tables copied from book
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 ReservedWords = [
     "ASSUME", "ELSE", "LOCAL", "UNION", "ASSUMPTION", "ENABLED", "MODULE",
@@ -687,9 +710,9 @@ PostfixOps = {
     "'":   (15, 15)
 }
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Compiler: AST pretty printer
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 # For printAST: AST nodes that have lists of nodes as arguments
 listNodes = [
@@ -751,9 +774,9 @@ def printAST(x, indent):
         print(" '" + str(a) + "'", end="")
         print(")")
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Compiler: BNF rules
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 # Extract the lexeme out of a token
 def lexeme(token):
@@ -1012,13 +1035,16 @@ class OneOf(Rule):
         shortest = s            # look for shortest remainder
         result = None
         for grammar in self.what:
+            #print(grammar)
             (t, a, r) = grammar.parse(s)
             if t != False:
                 if len(r) < len(shortest):
                     shortest = r
                     result = (t, a, r)
+        print("FFFF____XXX")
         if result == None:
             return parseError([("OneOf: no match", s)], s)
+        print("AFTER OneOf")
         return result
 
 class Tuple(Rule):
@@ -1454,9 +1480,9 @@ class GBasicExpression(Rule):
             Tag("at", tok("@"))
         ]))
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Compiler: Lexer
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 # Initial list of tokens for the lexer.  More added later from op tables.
 tokens = [
@@ -1642,9 +1668,9 @@ def lexer(s, file):
         column += 1
     return result
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Compiler: Expressions
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 # Get the prefix of an A!B!C type expression
 def getprefix(ast, operators):
@@ -2107,7 +2133,7 @@ class BuiltinExpression(Expression):
         except Exception as e:
             print("Evaluating", stringToken(self.lex), "failed")
             print(e)
-            print(traceback.format_exc())
+            #print(traceback.format_exc())
             exit(1);
 
 # The simplest of expressions is just a value
@@ -2275,8 +2301,8 @@ class OperatorExpression(Expression):
 # Another simple one is a container expression, which holds a value for a variable
 # for both the previous state and the next state
 class ContainerExpression(Expression):
-    def __init__(self, var=None, primed=False):
-        self.var = var
+    def __init__(self, a_var=None, primed=False):
+        self.a_var = a_var
         self.primed = primed
         self.prev = None
         self.next = None
@@ -2361,13 +2387,13 @@ class LambdaExpression(Expression):
             else:
                 result[tuple(lst)] = self.expr.eval(containers, boundedvars)
         else:
-            (var, domain) = domains[0]
+            (a_var, domain) = domains[0]
             if domain == False:
                 print("Error: possibly trying to evaluate Nat")
                 exit(1)
             domain = sorted(domain, key=lambda x: key(x))
             for val in domain:
-                boundedvars[var] = ValueExpression(val)
+                boundedvars[a_var] = ValueExpression(val)
                 self.enumerate(containers, domains[1:], lst + [val],
                                         result, boundedvars)
 
@@ -2384,8 +2410,8 @@ class LambdaExpression(Expression):
         assert len(self.quantifiers) == len(fargs)
         bv = boundedvars.copy()
         for i in range(len(fargs)):
-            var = self.quantifiers[i]
-            bv[var] = ValueExpression(fargs[i])
+            a_var = self.quantifiers[i]
+            bv[a_var] = ValueExpression(fargs[i])
         return self.expr.eval(containers, bv)
 
 class ExistsExpression(Expression):
@@ -2409,7 +2435,7 @@ class ExistsExpression(Expression):
 
         if domains == []:
             return self.expr.eval(containers, boundedvars)
-        (var, domain) = domains[0]
+        (a_var, domain) = domains[0]
 
         # Pseudo-randomized SAT solving...
         domain = sorted(domain, key=lambda x: key(x))
@@ -2423,7 +2449,7 @@ class ExistsExpression(Expression):
         for (k, v) in containers.items():
             copy[k] = v.next
         for val in domain:
-            boundedvars[var] = ValueExpression(val)
+            boundedvars[a_var] = ValueExpression(val)
             if self.enumerate(containers, domains[1:], boundedvars):
                 return True
             # restore state before trying next
@@ -2460,10 +2486,10 @@ class ForallExpression(Expression):
     def enumerate(self, containers, domains, boundedvars):
         if domains == []:
             return self.expr.eval(containers, boundedvars)
-        (var, domain) = domains[0]
+        (a_var, domain) = domains[0]
         domain = sorted(domain, key=lambda x: key(x))
         for val in domain:
-            boundedvars[var] = ValueExpression(val)
+            boundedvars[a_var] = ValueExpression(val)
             if not self.enumerate(containers, domains[1:], boundedvars):
                 return False
         return True
@@ -2497,10 +2523,10 @@ class GenExpression(Expression):
         if domains == []:
             result.append(self.expr.eval(containers, boundedvars))
         else:
-            (var, domain) = domains[0]
+            (a_var, domain) = domains[0]
             domain = sorted(domain, key=lambda x: key(x))
             for val in domain:
-                boundedvars[var] = ValueExpression(val)
+                boundedvars[a_var] = ValueExpression(val)
                 self.enumerate(containers, domains[1:], boundedvars, result)
 
     def eval(self, containers, boundedvars):
@@ -2527,7 +2553,7 @@ class Temporal_existsExpression(Expression):
         if initializing:
             containers = subs.copy()
             for id in self.quantifiers:
-                containers[id] = ContainerExpression(var=id)
+                containers[id] = ContainerExpression(a_var=id)
             return Temporal_existsExpression(quantifiers=self.quantifiers,
                     expr=self.expr.substitute(containers),
                     containers=containers, primed=self.primed)
@@ -3177,7 +3203,7 @@ class InfixExpression(Expression):
         lt = compileExpression(lhs)
         rt = compileExpression(rhs)
         mod = modstk[-1]
-        
+
         if lex in mod.operators:
             id = mod.operators[lex]
             assert isinstance(id, OperatorExpression)
@@ -3208,21 +3234,21 @@ class InfixExpression(Expression):
         # when x' is not assigned a value in next.  In that case we set
         # x' to ...
         if isinstance(self.lhs, PrimeExpression):
-            var = self.lhs.expr
+            a_var = self.lhs.expr
             assert isinstance(var, ContainerExpression)
-            if var.next == None:
+            if a_var.next == None:
                 val = self.rhs.eval(containers, boundedvars)
                 if val == None:
                     print("XXX", self.rhs)
                 assert val != None
                 if lex == '=':
-                    var.next = val
-                    # print("ASSIGN", var.var, containers)
+                    a_var.next = val
+                    # print("ASSIGN", a_var.var, containers)
                     return True
                 elif lex == "\\in":
                     lst = list(val)
                     r = random.randrange(len(lst))
-                    var.next = lst[r]
+                    a_var.next = lst[r]
                     return True
 
         # Copy next state in case need to restore after OR operation
@@ -3276,7 +3302,7 @@ class InfixExpression(Expression):
         except Exception as e:
             print("Evaluating infix", stringToken(self.op), "failed")
             print(e)
-            print(traceback.format_exc())
+            #print(traceback.format_exc())
             exit(1)
 
         print("Infix operator", self.op, "not defined")
@@ -3560,12 +3586,12 @@ class StringExpression(Expression):
         assert len(fargs) == 1
         return self.string[fargs[0] - 1]
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Main Class
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
-name_stack[-1]["FALSE"] = ValueExpression(False)
-name_stack[-1]["TRUE"] = ValueExpression(True)
+#name_stack[-1]["FALSE"] = ValueExpression(False)
+#name_stack[-1]["TRUE"] = ValueExpression(True)
 
 class PlusPyError(Exception):
     def __init__(self, descr):
@@ -3590,9 +3616,9 @@ class PlusPy:
         self.constants = {
             self.mod.constants[k]:ValueExpression(v) for (k, v) in constants.items()
         }
- 
+
         # Substitute containers for variables
-        self.containers = { v:ContainerExpression(var=v)
+        self.containers = { v:ContainerExpression(a_var=v)
                                     for v in self.mod.variables.values() }
 
     def init(self, initOp):
@@ -3665,23 +3691,23 @@ class PlusPy:
                 return False
         return True
 
-    def get(self, var):
-        var = self.mod.variables.get(var)
-        if var == None:
+    def get(self, a_var):
+        a_var = self.mod.variables.get(a_var)
+        if a_var == None:
             return None
-        return self.containers[var].next
+        return self.containers[a_var].next
 
-    def set(self, var, value):
-        v = self.containers.get(self.mod.variables[var])
+    def set(self, a_var, value):
+        v = self.containers.get(self.mod.variables[a_var])
         v.next = value
 
     def getall(self):
         s = { k.id:v.next for (k, v) in self.containers.items() }
         return simplify(FrozenDict(s))
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Python Wrappers (to replace TLA+ operator definitions)
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 class Wrapper:
     def eval(self, id, args):
@@ -3953,6 +3979,7 @@ wrappers["TLC"] = {
     "JSignalReturn": JSignalReturnWrapper()
 }
 
+"""
 import threading
 
 class netReceiver(threading.Thread):
@@ -3973,7 +4000,7 @@ class netReceiver(threading.Thread):
                 break
             all.append(data)
         with lock:
-            msg = pickle.loads(b''.join(all))
+            msg = "" #pickle.loads(b''.join(all))
             if verbose:
                 print("netReceiver", addr, msg)
             IO_inputs.append(FrozenDict({
@@ -3994,10 +4021,10 @@ class netSender(threading.Thread):
             print("netSender", dst, self.msg)
         while True:
             try:
-                skt = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                skt.connect(dst)
-                skt.sendall(pickle.dumps(self.msg))
-                skt.close()
+                #skt = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+                #skt.connect(dst)
+                #skt.sendall(pickle.dumps(self.msg))
+                #skt.close()
                 break
             except ConnectionRefusedError:
                 time.sleep(0.5)
@@ -4007,15 +4034,16 @@ class netServer(threading.Thread):
         threading.Thread.__init__(self)
         self.mux = mux
 
-    def run(self):
-        skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        parts = self.mux.split(":")
-        skt.bind((parts[0], int(parts[1])))
-        skt.listen()
+        def run(self):
+        #skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #skt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        #parts = self.mux.split(":")
+        #skt.bind((parts[0], int(parts[1])))
+        #skt.listen()
         while True:
-            client = skt.accept()
-            netReceiver(client, self.mux).start()
+            pass
+            #client = skt.accept()
+            #netReceiver(client, self.mux).start()
 
 IO_inputs = []
 IO_outputs = []
@@ -4035,7 +4063,7 @@ class Reader(threading.Thread):
 
 def flush():
     global IO_outputs
-    for x in IO_outputs: 
+    for x in IO_outputs:
         d = x.d
         if d["intf"] == "fd":
             if d["mux"] == "stdout":
@@ -4124,15 +4152,15 @@ wrappers["IOUtils"] = {
     "IOGet": IOGetWrapper()
 }
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 ####    Main program
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
 import sys
 import time
-import socket
-import pickle
-import getopt
+#import socket
+#import pickle
+#import getopt
 
 lock = threading.Lock()
 cond = threading.Condition(lock)
@@ -4208,7 +4236,9 @@ def run(pp, next):
             # To implement JWait/JSignalReturn
             while arg in waitset:
                 cond.wait(0.2)
+"""
 
+"""
 def main():
     global verbose, silent, maxcount, pluspypath
 
@@ -4284,3 +4314,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
