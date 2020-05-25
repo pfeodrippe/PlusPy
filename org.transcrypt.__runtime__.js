@@ -8,16 +8,18 @@ __envir__.transpiler_version = '3.7.16';
 
 var mapProxyHandler = {
     get(target, k) {
-        return target._map.get(k);
+        if(target.hasOwnProperty(k)) {
+            return target[k];
+        }
+        return Reflect.get(target._map, k);
     },
 
     set(target, k, v) {
-        return target._map.set(k, v);
+        return Reflect.set(target._map, k, v);
     },
 
     defineProperty(target, k, descriptor) {
-        console.log(target);
-        return Object.defineProperty(target, k, descriptor);
+        return Reflect.defineProperty(target, k, descriptor);
     },
 
     ownKeys(target) {
@@ -1804,7 +1806,6 @@ export function __getitem__ (container, key) {
 };
 export function __setitem__ (container, key, value) {
     if (typeof container == 'object' && '__setitem__' in container) {
-        console.log(Object.getOwnPropertyNames(container));
         container.__setitem__ (key, value);
     }
     else if ((typeof container == 'string' || container instanceof Array) && key < 0) {

@@ -3625,11 +3625,12 @@ class PlusPy:
         }
 
         print("self_mod_name", self.mod.name)
-        print("self_variable", self.mod.variables)
 
+        values = self.mod.variables.values()
+        for v in values:
+            print("self_variable", v)
         # Substitute containers for variables
-        self.containers = { v:ContainerExpression(a_var=v)
-                                    for v in self.mod.variables.values() }
+        self.containers = { v:ContainerExpression(a_var=v) for v in values }
 
     def init(self, initOp):
         op = self.mod.operators[initOp]
