@@ -1731,7 +1731,10 @@ def opSubst(instances):
         print("subs", subs)
         print("input", iargs[i])
         print("output", oargs[i])
-        subs[oargs[i]] = iargs[i]
+        if oargs[i].id == iargs[i].id and isinstance(oargs[i], ArgumentExpression):
+            subs[oargs[i].id] = iargs[i].id
+        else:
+            subs[oargs[i]] = iargs[i]
     print(subs)
     x = expr.substitute(subs)
     if isinstance(x, BuiltinExpression):
@@ -2231,10 +2234,10 @@ class ArgumentExpression(Expression):
         return "Argument(" + str(self.id) + ", " + str(self.nargs) + ")"
 
     def substitute(self, subs):
-        if subs.get(self) == None:
+        if subs.get(self.id) == None:
             return self
         else:
-            return subs[self]
+            return subs[self.id]
 
     def eval(self, containers, boundedvars):
         print("Error: argument", self.id, "not realized", self.nargs, containers, boundedvars)
