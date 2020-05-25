@@ -1330,9 +1330,7 @@ function __dsetitem__ (aKey, aValue) {
     this [aKey] = aValue;
 }
 export function dict (objectOrPairs) {
-    // var instance = new Proxy({_map: new Map()}, mapProxyHandler);
-    var instance = new Proxy(new Map(), mapProxyHandler);
-    instance.hasOwnProperty = function(attr) {return attr in this};
+    var instance = {};
     if (!objectOrPairs || objectOrPairs instanceof Array) {
         if (objectOrPairs) {
             for (var index = 0; index < objectOrPairs.length; index++) {
