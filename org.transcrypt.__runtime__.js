@@ -11,11 +11,12 @@ var mapProxyHandler = {
         if(target.hasOwnProperty(k)) {
             return target[k];
         }
-        return Reflect.get(target._map, k);
+        return target.get(k); //Reflect.get(target, k);
     },
 
     set(target, k, v) {
-        return Reflect.set(target._map, k, v);
+        // return Reflect.set(target, k, v);
+        return target.set(k, v);
     },
 
     defineProperty(target, k, descriptor) {
@@ -1329,7 +1330,8 @@ function __dsetitem__ (aKey, aValue) {
     this [aKey] = aValue;
 }
 export function dict (objectOrPairs) {
-    var instance = new Proxy({_map: new Map()}, mapProxyHandler);
+    // var instance = new Proxy({_map: new Map()}, mapProxyHandler);
+    var instance = new Proxy(new Map(), mapProxyHandler);
     instance.hasOwnProperty = function(attr) {return attr in this};
     if (!objectOrPairs || objectOrPairs instanceof Array) {
         if (objectOrPairs) {
