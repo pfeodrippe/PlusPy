@@ -10,8 +10,8 @@ __pragma__ ('noskip')
 pluspypath = ".:./modules/lib:./modules/book:./modules/other"
 
 def exit(status):
-    sys.stdout.flush()
-    #os._exit(status)
+    print("exit status:", status)
+    1 / 0
 
 # When compiling and running into an identifier, it should be clear
 # exactly what that identifier refers to.  It could be the name of:
@@ -1728,8 +1728,11 @@ def opSubst(instances):
     # Do a substitution, replacing argument names with argument values
     subs = {}
     for i in range(len(oargs)):
+        print("subs", subs)
+        print("input", iargs[i])
+        print("output", oargs[i])
         subs[oargs[i]] = iargs[i]
-
+    print(subs)
     x = expr.substitute(subs)
     if isinstance(x, BuiltinExpression):
         return BuiltinExpression(id=x.id, args=x.args,
@@ -2095,10 +2098,10 @@ class Expression:
         print("Eval: ", self)
         assert False
 
-    def apply(self, containers, boundedvars, fargs):
+    def a_apply(self, containers, boundedvars, fargs):
         v = self.eval(containers, boundedvars)
         if v == None:
-            print("Default apply", self, fargs)
+            print("Default a_apply", self, fargs)
         assert v != None
         return funceval(v, fargs)
 
@@ -2211,9 +2214,9 @@ class BoundvarExpression(Expression):
         assert isinstance(expr, ValueExpression)
         return expr.eval(containers, boundedvars)
 
-    def apply(self, containers, boundedvars, fargs):
+    def a_apply(self, containers, boundedvars, fargs):
         expr = boundedvars[self]
-        return expr.apply(containers, boundedvars, fargs)
+        return expr.a_apply(containers, boundedvars, fargs)
 
 # An "argument" is the usage of an argument to an operator definition
 # inside its body.  It itself may have arguments.  Needs to be substituted
@@ -2401,7 +2404,7 @@ class LambdaExpression(Expression):
         self.enumerate(containers, domains, [], result, boundedvars.copy())
         return simplify(FrozenDict(result))
 
-    def apply(self, containers, boundedvars, fargs):
+    def a_apply(self, containers, boundedvars, fargs):
         assert len(self.quantifiers) == len(fargs)
         bv = boundedvars.copy()
         for i in range(len(fargs)):
@@ -2989,7 +2992,7 @@ class ChooseExpression(Expression):
         print("CHOOSE", self)
         assert False
 
-    def apply(self, containers, boundedvars, fargs):
+    def a_apply(self, containers, boundedvars, fargs):
         print(containers)
         print(boundedvars)
         print(fargs)
@@ -3001,7 +3004,7 @@ class ChooseExpression(Expression):
                 and self.expr.lhs == self.id:
             func = self.expr.rhs
             newBV[self.id] = func
-            return func.apply(containers, newBV, fargs)
+            return func.a_apply(containers, newBV, fargs)
         else:
             v = self.eval(containers, boundedvars)
             return funceval(v, fargs)
@@ -3306,7 +3309,7 @@ class InfixExpression(Expression):
         print("Infix operator", self.op, "not defined")
         assert False
 
-# Apply the given arguments in vals to func
+# A_Apply the given arguments in vals to func
 def funceval(func, vals):
     assert func != None
 
@@ -3407,7 +3410,7 @@ class IndexExpression(Expression):
     def eval(self, containers, boundedvars):
         assert self.args != []
         args = [ arg.eval(containers, boundedvars) for arg in self.args ]
-        r = self.func.apply(containers, boundedvars, args)
+        r = self.func.a_apply(containers, boundedvars, args)
         assert r != None
         return r
 
@@ -3452,7 +3455,7 @@ class TupleExpression(Expression):
     def eval(self, containers, boundedvars):
         return simplify(tuple([ e.eval(containers, boundedvars) for e in self.exprs ]))
 
-    def apply(self, containers, boundedvars, fargs):
+    def a_apply(self, containers, boundedvars, fargs):
         assert len(fargs) == 1
         # print("ZZZZ", [x.eval(containers, boundedvars) for x in self.exprs], fargs[0])
         return self.exprs[fargs[0] - 1].eval(containers, boundedvars)
@@ -3580,7 +3583,7 @@ class StringExpression(Expression):
     def eval(self, containers, boundedvars):
         return self.string
 
-    def apply(self, containers, boundedvars, fargs):
+    def a_apply(self, containers, boundedvars, fargs):
         assert len(fargs) == 1
         return self.string[fargs[0] - 1]
 
@@ -3588,8 +3591,8 @@ class StringExpression(Expression):
 ####    Main Class
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 
-#name_stack[-1]["FALSE"] = ValueExpression(False)
-#name_stack[-1]["TRUE"] = ValueExpression(True)
+name_stack[-1]["FALSE"] = ValueExpression(False)
+name_stack[-1]["TRUE"] = ValueExpression(True)
 
 class PlusPyError(Exception):
     def __init__(self, descr):
