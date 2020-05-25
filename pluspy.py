@@ -1731,8 +1731,8 @@ def opSubst(instances):
         print("subs", subs)
         print("input", iargs[i])
         print("output", oargs[i])
-        if oargs[i].id == iargs[i].id and isinstance(oargs[i], ArgumentExpression):
-            subs[oargs[i].id] = iargs[i].id
+        if isinstance(oargs[i], ArgumentExpression) or isinstance(oargs[i], VariableExpression):
+            subs[oargs[i].id] = iargs[i]
         else:
             subs[oargs[i]] = iargs[i]
     print(subs)
@@ -2162,14 +2162,14 @@ class VariableExpression(Expression):
         return "Variable(" + str(self.id) + ")"
 
     def substitute(self, subs):
-        if subs.get(self) == None:
+        if subs.get(self.id) == None:
             return self
         else:
             global initializing
             if initializing:
-                return PrimeExpression(expr=subs[self])
+                return PrimeExpression(expr=subs[self.id])
             else:
-                return subs[self]
+                return subs[self.id]
 
     def eval(self, containers, boundedvars):
         print("Error: variable", self.id, "not realized", containers, boundedvars)
