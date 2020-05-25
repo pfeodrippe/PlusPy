@@ -434,7 +434,7 @@ class Module:
         if not full:
             return False
         content = await maybe_fetch_text(await read_file(full))
-        print(content)
+        print("content", content)
         return self.load_from_string(content, file)
 
 def load_module(name):
@@ -2162,6 +2162,7 @@ class VariableExpression(Expression):
         return "Variable(" + str(self.id) + ")"
 
     def substitute(self, subs):
+        print("v_subs", subs)
         if subs.get(self.id) == None:
             return self
         else:
@@ -2309,7 +2310,7 @@ class ContainerExpression(Expression):
         self.next = None
 
     def __str__(self):
-        return "Container(" + self.var.id + ", " + str(convert(self.prev)) \
+        return "Container(" + self.a_var.id + ", " + str(convert(self.prev)) \
                             + ", " + str(convert(self.next)) + ")"
 
     def substitute(self, subs):
@@ -3239,7 +3240,7 @@ class InfixExpression(Expression):
         # x' to ...
         if isinstance(self.lhs, PrimeExpression):
             a_var = self.lhs.expr
-            assert isinstance(var, ContainerExpression)
+            assert isinstance(a_var, ContainerExpression)
             if a_var.next == None:
                 val = self.rhs.eval(containers, boundedvars)
                 if val == None:
@@ -3605,7 +3606,7 @@ class PlusPyError(Exception):
         return "PlusPyError: " + self.descr
 
 class PlusPy:
-    def __init__(self, file, constants={}, seed=None):
+    async def __init__(self, file, constants={}, seed=None):
         if seed != None:
             random.seed(seed)
 
@@ -3613,13 +3614,18 @@ class PlusPy:
         self.mod = Module()
         if not file.endswith(".tla"):
             file += ".tla"
-        if not self.mod.load_from_file(file):
+        loaded_file = await self.mod.load_from_file(file)
+        print("loaded_file", loaded_file)
+        if not loaded_file:
             raise PlusPyError("can't load " + file)
         modules[self.mod.name] = self.mod
 
         self.constants = {
             self.mod.constants[k]:ValueExpression(v) for (k, v) in constants.items()
         }
+
+        print("self_mod_name", self.mod.name)
+        print("self_variable", self.mod.variables)
 
         # Substitute containers for variables
         self.containers = { v:ContainerExpression(a_var=v)
@@ -3630,15 +3636,22 @@ class PlusPy:
         assert isinstance(op, OperatorExpression)
         assert op.args == []
 
+        print("wrappers", wrappers)
+
+        print("constants", self.constants)
         # Set the constants
         expr2 = op.expr.substitute(self.constants)
+        print("expr2", expr2)
 
         # Replace variables with primed containers in state expressions
         global initializing
         initializing = True
         expr3 = expr2.substitute(self.containers)
         initializing = False
+        print("expr3", expr3)
+        print("con", self.containers)
         r = expr3.eval(self.containers, {})
+        print("r", r)
         if not r:
             print("Initialization failed -- fatal error", file=sys.stderr)
             exit(1)

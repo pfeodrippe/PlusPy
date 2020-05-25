@@ -6,6 +6,29 @@ __envir__.transpiler_name = 'transcrypt';
 __envir__.executor_name = __envir__.transpiler_name;
 __envir__.transpiler_version = '3.7.16';
 
+var mapProxyHandler = {
+    get(target, k) {
+        return target._map.get(k);
+    },
+
+    set(target, k, v) {
+        return target._map.set(k, v);
+    },
+
+    defineProperty(target, k, descriptor) {
+        console.log(target);
+        return Object.defineProperty(target, k, descriptor);
+    },
+
+    ownKeys(target) {
+        return Reflect.ownKeys(target);
+    },
+
+    getOwnPropertyDescriptor(target, k) {
+        return Reflect.getOwnPropertyDescriptor(target, k);
+    }
+};
+
 export function __nest__ (headObject, tailNames, value) {
     var current = headObject;
     if (tailNames != '') {
@@ -1304,7 +1327,8 @@ function __dsetitem__ (aKey, aValue) {
     this [aKey] = aValue;
 }
 export function dict (objectOrPairs) {
-    var instance = {};
+    var instance = new Proxy({_map: new Map()}, mapProxyHandler);
+    instance.hasOwnProperty = function(attr) {return attr in this};
     if (!objectOrPairs || objectOrPairs instanceof Array) {
         if (objectOrPairs) {
             for (var index = 0; index < objectOrPairs.length; index++) {
@@ -1780,6 +1804,7 @@ export function __getitem__ (container, key) {
 };
 export function __setitem__ (container, key, value) {
     if (typeof container == 'object' && '__setitem__' in container) {
+        console.log(Object.getOwnPropertyNames(container));
         container.__setitem__ (key, value);
     }
     else if ((typeof container == 'string' || container instanceof Array) && key < 0) {
